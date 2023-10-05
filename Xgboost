@@ -1,0 +1,62 @@
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import IsolationForest
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_score, recall_score, f1_score
+import xgboost as xgb
+
+# Step 1: Anomaly Detection with Isolation Forest
+# Load your dataset, assuming you have a 'features' column for data
+data = pd.read_csv('your_dataset.csv')
+
+# Create Isolation Forest model
+iso_forest = IsolationForest(contamination=0.05, random_state=42)
+data['anomaly_label'] = iso_forest.fit_predict(data[['features']])
+
+# Step 2: Feature Engineering (You may need to customize this)
+# For this example, let's assume feature engineering is adding a squared feature
+data['features_squared'] = data['features'] ** 2
+
+# Step 3: Classification with XGBoost
+# Split the data into normal and anomaly subsets
+normal_data = data[data['anomaly_label'] == 1]
+anomaly_data = data[data['anomaly_label'] == -1]
+
+# Prepare a balanced dataset for XGBoost training (optional)
+sample_size = min(len(normal_data), len(anomaly_data))
+balanced_data = pd.concat([normal_data.sample(sample_size, random_state=42), anomaly_data.sample(sample_size, random_state=42)])
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(balanced_data[['features', 'features_squared']], balanced_data['anomaly_label'], test_size=0.2, random_state=42)
+
+# Train an XGBoost binary classifier
+xgb_classifier = xgb.XGBClassifier(random_state=42)
+xgb_classifier.fit(X_train, y_train)
+
+# Step 4: Model Evaluation
+# Make predictions on the test set
+y_pred = xgb_classifier.predict(X_test)
+
+# Evaluate the XGBoost classifier
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+
+print(f"Precision: {precision:.2f}")
+print(f"Recall: {recall:.2f}")
+print(f"F1 Score: {f1:.2f}")
+
+# Step 5: Threshold Selection (You may need to fine-tune this)
+# You can choose an appropriate threshold based on your desired precision and recall trade-off.
+# For simplicity, we'll use a threshold of 0.5 for demonstration.
+threshold = 0.5
+
+# Step 6: Final Anomaly Detection
+# Make predictions on your real-world data using the trained XGBoost model
+real_world_data = pd.read_csv('real_world_data.csv')
+real_world_data['features_squared'] = real_world_data['features'] ** 2
+
+# Predict using the XGBoost model
+real_world_data['anomaly_prediction'] = (xgb_classifier.predict_proba(real_world_data[['features', 'features_squared']])[:, 1] > threshold).astype(int)
+
+# The 'anomaly_prediction' column now contains 1 for anomalies and 0 for normal data points in your real-world data.
