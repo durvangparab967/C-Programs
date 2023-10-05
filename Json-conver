@@ -1,0 +1,17 @@
+import json
+
+# Create a dictionary to store the data
+graph_data = {
+    'x_values': list(range(len(anomaly_scores))),
+    'y_values': anomaly_scores,
+    'x_label': 'Anomaly Score',
+    'y_label': 'Frequency',
+    'title': 'Distribution of Anomaly Scores'
+}
+
+# Convert the data to JSON
+graph_json = json.dumps(graph_data)
+
+# Save the JSON to a file
+with open('graph_data.json', 'w') as json_file:
+    json_file.write(graph_json)
