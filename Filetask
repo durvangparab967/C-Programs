@@ -1,0 +1,54 @@
+private async Task CalculateDirectorySizeAsync(string dirpath, CancellationToken cancellationToken)
+{
+    try
+    {
+        long totalSize = 0;
+        DirectoryInfo dir = new DirectoryInfo(dirpath);
+        FileInfo[] files = dir.GetFiles();
+
+        // Create a list to hold tasks for calculating file sizes
+        List<Task<long>> fileTasks = new List<Task<long>>();
+
+        foreach (FileInfo file in files)
+        {
+            // Add a task to calculate the file size asynchronously
+            fileTasks.Add(Task.Run(() => CalculateFileSizeAsync(file.FullName), cancellationToken));
+        }
+
+        // Wait for all file size calculation tasks to complete
+        await Task.WhenAll(fileTasks);
+
+        // Sum up the file sizes
+        foreach (var fileSizeTask in fileTasks)
+        {
+            totalSize += await fileSizeTask;
+        }
+
+        // Now you have the totalSize and can use it as needed
+        lblStatus.Text = $"The total folder size is {FormatBytes(totalSize)}";
+    }
+    catch (Exception ex) when (ex is OperationCanceledException || ex is TaskCanceledException)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Application.Exit();
+    }
+}
+
+private async Task<long> CalculateFileSizeAsync(string filePath)
+{
+    long fileSize = 0;
+
+    try
+    {
+        using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+        {
+            fileSize = await stream.LengthAsync();
+        }
+    }
+    catch (IOException)
+    {
+        // Handle file access errors here
+    }
+
+    return fileSize;
+}
