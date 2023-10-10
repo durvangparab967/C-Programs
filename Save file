@@ -1,0 +1,15 @@
+private void browseButton_Click(object sender, EventArgs e)
+{
+    using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+    {
+        saveFileDialog.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
+        saveFileDialog.FilterIndex = 1;
+        saveFileDialog.RestoreDirectory = true;
+
+        if (saveFileDialog.ShowDialog() == DialogResult.OK)
+        {
+            // Set the selected CSV file path to the TextBox
+            csvFilePathTextBox.Text = saveFileDialog.FileName;
+        }
+    }
+}
