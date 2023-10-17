@@ -10,7 +10,15 @@ namespace DirectoryStructureApp
 {
     public partial class Form1 : Form
     {
-        // ... (other using statements and class declaration) ...
+        private Button generateCsvButton;
+        private Button cancelButton;
+        private ProgressBar progressBar;
+        private TextBox logTextBox;
+        private DataGridView directoryDataGridView;
+        private ComboBox levelSelector;
+
+        private string rootDirectory;
+        private CancellationTokenSource cancellationTokenSource;
 
         public Form1()
         {
@@ -19,59 +27,164 @@ namespace DirectoryStructureApp
 
         private void InitializeComponent()
         {
-            // ... (Existing code for other controls) ...
+            this.Text = "Directory Structure Explorer";
 
-            // Add a panel to hold the directory drilling buttons
-            Panel directoryButtonsPanel = new Panel();
-            directoryButtonsPanel.Name = "directoryButtonsPanel";
-            directoryButtonsPanel.Location = new System.Drawing.Point(10, 80);
-            directoryButtonsPanel.Size = new System.Drawing.Size(200, 30);
-            this.Controls.Add(directoryButtonsPanel);
+            // Generate CSV button
+            generateCsvButton = new Button();
+            generateCsvButton.Text = "Generate CSV";
+            generateCsvButton.Location = new System.Drawing.Point(10, 40);
+            generateCsvButton.Click += new System.EventHandler(this.generateCsvButton_Click);
+            this.Controls.Add(generateCsvButton);
+
+            // Level selector ComboBox
+            levelSelector = new ComboBox();
+            levelSelector.Name = "levelSelector";
+            levelSelector.Location = new System.Drawing.Point(10, 10);
+            levelSelector.Size = new System.Drawing.Size(100, 25);
+            levelSelector.Items.AddRange(new string[] { "Level 1", "Level 2", "Level 3" });
+            levelSelector.SelectedIndex = 0;
+            levelSelector.SelectedIndexChanged += (sender, e) => RefreshDirectoryView();
+            this.Controls.Add(levelSelector);
+
+            // ... (Other controls like progressBar, logTextBox, and directoryDataGridView) ...
+
+            RefreshDirectoryView();
         }
 
-        private async void generateCsvButton_Click(object sender, EventArgs e)
+        private void RefreshDirectoryView()
         {
-            // ... (Existing code for generating CSV) ...
-
-            // Clear any existing directory drilling buttons
             ClearDirectoryButtons();
+            int selectedLevel = levelSelector.SelectedIndex + 1;
 
-            // Add buttons for subdirectories
-            DirectoryInfo dir = new DirectoryInfo(rootDirectory);
-            foreach (DirectoryInfo subDir in dir.GetDirectories())
+            if (selectedLevel == 0)
             {
-                AddDirectoryButton(subDir);
+                return; // No level selected
             }
 
-            // ... (Rest of your existing code) ...
+            DirectoryInfo dir = new DirectoryInfo(rootDirectory);
+            for (int i = 0; i < selectedLevel; i++)
+            {
+                foreach (DirectoryInfo subDir in dir.GetDirectories())
+                {
+                    Button dirButton = new Button();
+                    dirButton.Name = subDir.FullName;
+                    dirButton.Text = subDir.Name;
+                    dirButton.Click += (sender, e) => DrillIntoDirectory(sender as Button);
+                    dirButton.AutoSize = true;
+
+                    this.Controls.Add(dirButton);
+                }
+            }
         }
 
         private void ClearDirectoryButtons()
         {
-            Panel directoryButtonsPanel = this.Controls["directoryButtonsPanel"] as Panel;
-            directoryButtonsPanel.Controls.Clear();
+            foreach (Control control in this.Controls)
+            {
+                if (control is Button)
+                {
+                    this.Controls.Remove(control);
+                    control.Dispose();
+                }
+            }
         }
 
-        private void AddDirectoryButton(DirectoryInfo subDir)
+        private async void generateCsvButton_Click(object sender, EventArgs e)
         {
-            Button dirButton = new Button();
-            dirButton.Name = subDir.FullName;
-            dirButton.Text = subDir.Name;
-            dirButton.Click += (sender, e) => DrillIntoDirectory(sender as Button);
-            dirButton.AutoSize = true;
-            
-            Panel directoryButtonsPanel = this.Controls["directoryButtonsPanel"] as Panel;
-            directoryButtonsPanel.Controls.Add(dirButton);
+            ClearDirectoryButtons(); // Clear existing buttons
+            generateCsvButton.Enabled = false;
+            cancelButton.Enabled = true;
+            progressBar.Style = ProgressBarStyle.Marquee;
+
+            string csvFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "directory_structure.csv");
+            DataTable directoryTable = new DataTable();
+            directoryTable.Columns.Add("Directory", typeof(string));
+            directoryTable.Columns.Add("Total Size (bytes)", typeof(long));
+
+            try
+            {
+                cancellationTokenSource = new CancellationTokenSource();
+
+                await Task.Run(() => GenerateCsvAsync(rootDirectory, csvFilePath, directoryTable, cancellationTokenSource.Token));
+
+                progressBar.Style = ProgressBarStyle.Continuous;
+                generateCsvButton.Enabled = true;
+                cancelButton.Enabled = false;
+
+                logTextBox.AppendText("CSV file generated at: " + csvFilePath + Environment.NewLine);
+
+                directoryDataGridView.DataSource = directoryTable;
+            }
+            catch (OperationCanceledException)
+            {
+                logTextBox.AppendText("Operation canceled by user." + Environment.NewLine);
+                progressBar.Style = ProgressBarStyle.Continuous;
+                generateCsvButton.Enabled = true;
+                cancelButton.Enabled = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void cancelButton_Click(object sender, EventArgs e)
+        {
+            await Task.Run(() => CancelOperation());
+        }
+
+        private void CancelOperation()
+        {
+            if (cancellationTokenSource != null)
+            {
+                cancellationTokenSource.Cancel();
+            }
+        }
+
+        private async Task GenerateCsvAsync(string dirPath, string csvFilePath, DataTable directoryTable, CancellationToken cancellationToken)
+        {
+            using (StreamWriter writer = new StreamWriter(csvFilePath, false, Encoding.UTF8))
+            {
+                writer.WriteLine("Directory,File,Size (bytes)");
+                DirectoryInfo dir = new DirectoryInfo(dirPath);
+                await CalculateDirectorySizeRecursiveAsync(dir, writer, directoryTable, cancellationToken);
+            }
+        }
+
+        private async Task CalculateDirectorySizeRecursiveAsync(DirectoryInfo dir, StreamWriter writer, DataTable directoryTable, CancellationToken cancellationToken)
+        {
+            long totalSize = 0;
+            foreach (FileInfo file in dir.GetFiles())
+            {
+                try
+                {
+                    writer.WriteLine($"{dir.FullName},{file.Name},{file.Length}");
+                    totalSize += file.Length;
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+
+            directoryTable.Rows.Add(dir.FullName, totalSize);
+
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                DirectoryInfo[] subDirs = dir.GetDirectories();
+                foreach (DirectoryInfo subDir in subDirs)
+                {
+                    totalSize += await CalculateDirectorySizeRecursiveAsync(subDir, writer, directoryTable, cancellationToken);
+                }
+            }
         }
 
         private void DrillIntoDirectory(Button button)
         {
-            rootDirectory = button.Name; // Update the root directory
-            generateCsvButton_Click(this, null); // Re-generate the directory structure
-
-            // Optionally, you can update the UI to show the current directory path, etc.
+            rootDirectory = button.Name;
+            RefreshDirectoryView();
+            generateCsvButton_Click(this, null);
         }
-
-        // ... (Rest of your existing code) ...
     }
 }
