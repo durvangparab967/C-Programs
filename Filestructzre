@@ -1,0 +1,77 @@
+using System;
+using System.Data;
+using System.IO;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace DirectoryStructureApp
+{
+    public partial class Form1 : Form
+    {
+        // ... (other using statements and class declaration) ...
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void InitializeComponent()
+        {
+            // ... (Existing code for other controls) ...
+
+            // Add a panel to hold the directory drilling buttons
+            Panel directoryButtonsPanel = new Panel();
+            directoryButtonsPanel.Name = "directoryButtonsPanel";
+            directoryButtonsPanel.Location = new System.Drawing.Point(10, 80);
+            directoryButtonsPanel.Size = new System.Drawing.Size(200, 30);
+            this.Controls.Add(directoryButtonsPanel);
+        }
+
+        private async void generateCsvButton_Click(object sender, EventArgs e)
+        {
+            // ... (Existing code for generating CSV) ...
+
+            // Clear any existing directory drilling buttons
+            ClearDirectoryButtons();
+
+            // Add buttons for subdirectories
+            DirectoryInfo dir = new DirectoryInfo(rootDirectory);
+            foreach (DirectoryInfo subDir in dir.GetDirectories())
+            {
+                AddDirectoryButton(subDir);
+            }
+
+            // ... (Rest of your existing code) ...
+        }
+
+        private void ClearDirectoryButtons()
+        {
+            Panel directoryButtonsPanel = this.Controls["directoryButtonsPanel"] as Panel;
+            directoryButtonsPanel.Controls.Clear();
+        }
+
+        private void AddDirectoryButton(DirectoryInfo subDir)
+        {
+            Button dirButton = new Button();
+            dirButton.Name = subDir.FullName;
+            dirButton.Text = subDir.Name;
+            dirButton.Click += (sender, e) => DrillIntoDirectory(sender as Button);
+            dirButton.AutoSize = true;
+            
+            Panel directoryButtonsPanel = this.Controls["directoryButtonsPanel"] as Panel;
+            directoryButtonsPanel.Controls.Add(dirButton);
+        }
+
+        private void DrillIntoDirectory(Button button)
+        {
+            rootDirectory = button.Name; // Update the root directory
+            generateCsvButton_Click(this, null); // Re-generate the directory structure
+
+            // Optionally, you can update the UI to show the current directory path, etc.
+        }
+
+        // ... (Rest of your existing code) ...
+    }
+}
