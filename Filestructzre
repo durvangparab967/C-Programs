@@ -16,6 +16,7 @@ namespace DirectoryStructureApp
         private TextBox logTextBox;
         private DataGridView directoryDataGridView;
         private ComboBox levelSelector;
+        private ListBox directoryListBox; // ListBox to display directories
 
         private string rootDirectory;
         private CancellationTokenSource cancellationTokenSource;
@@ -46,6 +47,13 @@ namespace DirectoryStructureApp
             levelSelector.SelectedIndexChanged += (sender, e) => RefreshDirectoryView();
             this.Controls.Add(levelSelector);
 
+            // ListBox to display directories
+            directoryListBox = new ListBox();
+            directoryListBox.Name = "directoryListBox";
+            directoryListBox.Location = new System.Drawing.Point(10, 80);
+            directoryListBox.Size = new System.Drawing.Size(200, 200);
+            this.Controls.Add(directoryListBox);
+
             // ... (Other controls like progressBar, logTextBox, and directoryDataGridView) ...
 
             RefreshDirectoryView();
@@ -53,7 +61,7 @@ namespace DirectoryStructureApp
 
         private void RefreshDirectoryView()
         {
-            ClearDirectoryButtons();
+            ClearDirectoryListBox();
             int selectedLevel = levelSelector.SelectedIndex + 1;
 
             if (selectedLevel == 0)
@@ -61,37 +69,32 @@ namespace DirectoryStructureApp
                 return; // No level selected
             }
 
-            DirectoryInfo dir = new DirectoryInfo(rootDirectory);
-            for (int i = 0; i < selectedLevel; i++)
-            {
-                foreach (DirectoryInfo subDir in dir.GetDirectories())
-                {
-                    Button dirButton = new Button();
-                    dirButton.Name = subDir.FullName;
-                    dirButton.Text = subDir.Name;
-                    dirButton.Click += (sender, e) => DrillIntoDirectory(sender as Button);
-                    dirButton.AutoSize = true;
-
-                    this.Controls.Add(dirButton);
-                }
-            }
+            DisplayDirectories(rootDirectory, selectedLevel);
         }
 
-        private void ClearDirectoryButtons()
+        private void ClearDirectoryListBox()
         {
-            foreach (Control control in this.Controls)
+            directoryListBox.Items.Clear();
+        }
+
+        private void DisplayDirectories(string path, int level)
+        {
+            if (level == 0)
             {
-                if (control is Button)
-                {
-                    this.Controls.Remove(control);
-                    control.Dispose();
-                }
+                return;
+            }
+
+            DirectoryInfo dir = new DirectoryInfo(path);
+            foreach (DirectoryInfo subDir in dir.GetDirectories())
+            {
+                directoryListBox.Items.Add(subDir.FullName);
+                DisplayDirectories(subDir.FullName, level - 1);
             }
         }
 
         private async void generateCsvButton_Click(object sender, EventArgs e)
         {
-            ClearDirectoryButtons(); // Clear existing buttons
+            ClearDirectoryListBox();
             generateCsvButton.Enabled = false;
             cancelButton.Enabled = true;
             progressBar.Style = ProgressBarStyle.Marquee;
@@ -178,13 +181,6 @@ namespace DirectoryStructureApp
                     totalSize += await CalculateDirectorySizeRecursiveAsync(subDir, writer, directoryTable, cancellationToken);
                 }
             }
-        }
-
-        private void DrillIntoDirectory(Button button)
-        {
-            rootDirectory = button.Name;
-            RefreshDirectoryView();
-            generateCsvButton_Click(this, null);
         }
     }
 }
