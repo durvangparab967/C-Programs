@@ -1,0 +1,11 @@
+---
+- name: Your AaaS Microservice
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Execute PowerShell Script
+      win_shell: |
+        C:\path\to\scripts\your_script.ps1
+# ansible_inventory.ini
+[localhost]
+localhost ansible_connection=local
