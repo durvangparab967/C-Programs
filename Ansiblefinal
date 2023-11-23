@@ -1,0 +1,24 @@
+---
+- name: Your AaaS Microservice
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Create Temporary Folder on D directory
+      win_shell: New-Item -ItemType Directory -Path "D:\temp" -Force
+
+    - name: Copy Files from Ansible Repository to Temporary Folder
+      win_copy:
+        src: "{{ item.src }}"
+        dest: "D:\\temp"
+      with_items:
+        - { src: "src/file1.txt" }  # Adjust paths accordingly
+        - { src: "src/file2.txt" }
+        - { src: "src/another_directory/*" }  # You can use wildcards
+
+    - name: Execute PowerShell Script
+      win_shell: |
+        Invoke-Expression -Command "D:\temp\your_script.ps1"
+        # Adjust the script name accordingly
+
+    - name: Delete Temporary Folder on D directory
+      win_shell: Remove-Item -Path "D:\temp" -Recurse -Force
