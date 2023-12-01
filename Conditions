@@ -1,0 +1,32 @@
+---
+- name: AaaS Microservice
+  hosts: target_hosts
+  gather_facts: false
+  tasks:
+    - name: Create temporary auto directory
+      win_file:
+        path: "D:\\auto"
+        state: directory
+
+    - name: Copy Files from Ansible Repository to Temporary Folder
+      win_copy:
+        src: start_stop_services1.ps1
+        dest: "D:\\auto\\start_stop_services1.ps1"
+
+    - name: Execute PowerShell Script1
+      win_shell:
+        cmd: "set-location 'D:\\auto' ; .\\start_stop_services1.ps1 -action {{ action }} {% if Multiple_services is defined and Multiple_services | length > 0 %}-Multiple_services {{ Multiple_services }}{% endif %}"
+
+      when: Multiple_services is defined and Multiple_services | length > 0 and (services is not defined or services | length == 0)
+
+    - name: Execute PowerShell Script2
+      win_shell:
+        cmd: "set-location 'D:\\auto' ; .\\start_stop_services1.ps1 -action {{ action }} {% if services is defined and services | length > 0 %}-services {{ services }}{% endif %}"
+
+      when: services is defined and services | length > 0 and (Multiple_services is not defined or Multiple_services | length == 0)
+
+    - name: Execute PowerShell Script3
+      win_shell:
+        cmd: ".\\start_stop_services1.ps1 -action {{ action }} {% if Multiple_services is defined and Multiple_services | length > 0 %}-Multiple_services {{ Multiple_services }}{% endif %} {% if services is defined and services | length > 0 %}-services {{ services }}{% endif %}"
+      
+      when: (Multiple_services is not defined or Multiple_services | length == 0) and (services is not defined or services | length == 0)
