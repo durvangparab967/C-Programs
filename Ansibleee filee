@@ -1,0 +1,32 @@
+---
+- name: AaaS Microservice
+  hosts: target_hosts
+  gather_facts: false
+  tasks:
+    - name: Create temporary auto directory
+      win_file:
+        path: "D:\\auto"
+        state: directory
+
+    - name: Copy Files from Ansible Repository to Temporary Folder
+      win_copy:
+        src: start_stop_services1.ps1
+        dest: "D:\\auto\\start_stop_services1.ps1"
+
+    - name: Execute PowerShell Script
+      win_shell: |
+        set-location "D:\\auto"
+        $scriptPath = ".\\start_stop_services1.ps1"
+        $actionParam = "-action {{ action }}"
+        $multipleServicesParam = "{{ '-Multiple_services ' + Multiple_services | join(',') }}"  # Take only if not empty
+        $servicesParam = "{{ '-services ' + services | join(',') }}"  # Take only if not empty
+
+        if ($multipleServicesParam -eq "" -and $servicesParam -ne "") {
+          Invoke-Expression -Command "$scriptPath $actionParam $servicesParam"
+        } elseif ($multipleServicesParam -ne "" -and $servicesParam -eq "") {
+          Invoke-Expression -Command "$scriptPath $actionParam $multipleServicesParam"
+        } elseif ($multipleServicesParam -ne "" -and $servicesParam -ne "") {
+          Invoke-Expression -Command "$scriptPath $actionParam $multipleServicesParam $servicesParam"
+        } else {
+          Invoke-Expression -Command "$scriptPath $actionParam"
+        }
