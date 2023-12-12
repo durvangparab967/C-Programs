@@ -1,0 +1,44 @@
+# Read data from CSV file
+$csvPath = "C:\Path\To\Your\File.csv"
+$csvData = Import-Csv -Path $csvPath
+
+foreach ($row in $csvData) {
+    # Extract values from CSV row
+    $web_site_name = $row.WebSiteName
+    $bindinginformation = $row.BindingInformation
+    $host_header = $row.HostHeader
+    $server = $row.Server
+
+    # Define the remote session
+    $remoteSession = New-PSSession -ComputerName $server
+
+    # Enter the remote session and execute commands
+    Invoke-Command -Session $remoteSession -ScriptBlock {
+        param (
+            $web_site_name,
+            $bindinginformation,
+            $host_header
+        )
+
+        # Retrieve information about IIS sites
+        $pre_res = Get-IISSite
+
+        # Check if the binding information exists
+        if (-not (Get-IISSiteBinding -Name $web_site_name -BindingInformation $bindinginformation)) {
+            Write-Host "The binding info $bindinginformation for site $web_site_name does not match what is on the server. Run Discover and redo your work."
+            Exit 1
+        }
+
+        # Set the web binding with host header
+        Set-WebBinding -Name $web_site_name -BindingInformation $bindinginformation -PropertyName 'HostHeader' -Value $host_header
+
+        # Retrieve updated information about IIS sites
+        $post_res = Get-IISSite
+
+    } -ArgumentList $web_site_name, $bindinginformation, $host_header
+
+    # Close the remote session
+    Remove-PSSession $remoteSession
+}
+
+Write-Host "Script completed successfully."
