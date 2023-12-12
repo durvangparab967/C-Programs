@@ -1,0 +1,130 @@
+Param (
+    [Parameter(Mandatory=$true)]
+    [string]$operation,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$web_site_name,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$binding,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$bindinginformation,
+    
+    [Parameter(Mandatory=$false)]
+    [array]$binding_list,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$protocol,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$host_header,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$backup_file_basename
+)
+
+# Checks if the user is in the administrator group. Warns and stops if the user is not
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Warning "You are not running this as a local administrator. Run it again in an elevated prompt."
+    break
+}
+
+[string]$host = $Env:COMPUTERNAME
+[string]$version = Get-ItemPropertyValue -Path "HKLM:\Software\JPMC\BuildData\Applications\IIS" -Name Engrelease -ErrorAction SilentlyContinue
+[string]$filename = "Remediate_Baseline_IIS_EngRelease_${version}_${host}_$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+[string]$logfile = Join-Path (Split-Path $MyInvocation.MyCommand.Definition) $filename
+[string]$config_file = "applicationHost.config"
+
+function Write-Log {
+    Param (
+        [parameter(Mandatory=$true, ValueFromPipeline=$true)]
+        [string]$logentry
+    )
+
+    Process {
+        if (-not (Test-Path $logfile)) {
+            Out-File -FilePath $logfile -InputObject "Log Created for IIS baseline remediation on $host."
+        }
+
+        if ($logentry -eq "") {
+            $logentry = "------------------"
+        }
+
+        $logentry = "`n$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')`t$logentry"
+        Out-File -FilePath $logfile -InputObject $logentry -Append
+    }
+}
+
+function Backup-Config {
+    Param (
+        [string]$configFile
+    )
+
+    Write-Log "Backup operation started for $configFile"
+    # Add your backup logic here
+    Write-Log "Backup operation completed for $configFile"
+}
+
+function Pre-Remediate-Log {
+    Write-Log "Operation is '$operation'"
+}
+
+function Post-Remediate-Log {
+    Write-Log "Operation is '$operation'"
+    Write-Log "Post-remediation configuration:"
+    Get-IISSite | Out-File -FilePath $logfile -Append
+}
+
+function Verify-Log {
+    Write-Log "Operation is '$operation'"
+    Write-Log "Verify command is: $pre_command"
+}
+
+function Restore-Log {
+    Write-Log "Operation is '$operation'"
+    Write-Log "Configuration has been restored to backup values:"
+    Get-IISSite | Out-File -FilePath $logfile -Append
+}
+
+function CS-1393 {
+    if ($operation -eq "remediate") {
+        $pre_res = Get-IISSite
+        Backup-Config -configFile $config_file
+        Pre-Remediate-Log
+
+        $post_command = {
+            Set-WebBinding -Name $web_site_name -BindingInformation $binding -PropertyName "HostHeader" -Value $host_header
+        }
+
+        if (-Not (Get-IISSiteBinding -Name $web_site_name -BindingInformation $bindinginformation)) {
+            Write-Host "The binding info $bindinginformation does not match what is on the server. Run Discover and redo your work"
+            exit 1
+        }
+
+        $post = Set-WebBinding -Name $web_site_name -BindingInformation $bindinginformation -PropertyName "HostHeader" -Value $host_header
+        Post-Restart
+        $post_res = powershell "Get-IISSite"
+        Post-Remediate-Log
+    }
+
+    if ($operation -eq "delete binding") {
+        $pre_res = Get-IISSite
+        Backup-Config -configFile $config_file
+        $post_command = {
+            Remove-IISSiteBinding -Name $web_site_name -Protocol $protocol -BindingInformation $binding -Confirm:$false
+        }
+
+        if (-Not (Get-IISSiteBinding -Name $web_site_name -Protocol $protocol -BindingInformation $bindinginformation)) {
+            Write-Host "The combo of $protocol and $bindinginformation do not match. Run Discover and redo your work"
+            exit 1
+        }
+
+        $post = Remove-IISSiteBinding -Name $web_site_name -Protocol $protocol -BindingInformation $bindinginformation -Confirm:$false
+    }
+}
+
+# Add your additional functions and logic here
+
+# Example usage:
+CS-1393
