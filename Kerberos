@@ -1,0 +1,18 @@
+# Define the target server and script path
+$targetServer = "TargetServerName"
+$scriptPath = "\\Path\To\Your\Script.ps1"
+
+# Specify credentials for authentication
+$credential = Get-Credential
+
+# Create a session using Kerberos authentication
+$session = New-PSSession -ComputerName $targetServer -Authentication Kerberos -Credential $credential
+
+# Invoke the script on the remote server
+Invoke-Command -Session $session -ScriptBlock {
+    param($path)
+    & $path
+} -ArgumentList $scriptPath
+
+# Remove the session
+Remove-PSSession $session
