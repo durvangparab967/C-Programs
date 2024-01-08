@@ -1,0 +1,38 @@
+public async Task<bool> InsertASOverrideLookUpDetails(List<ASOverrideDTO> aSoverrideLookup, string SubmittedBy, string ApprovedBy)
+{
+    string approvedby = ApprovedBy;
+    string submittedby = SubmittedBy;
+
+    using (TransactionScope transactionscope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+    {
+        try
+        {
+            List<Task> tasks = new List<Task>();
+
+            Parallel.ForEach(aSoverrideLookup, asoverrideLookupDTO =>
+            {
+                Task task = Task.Run(async () =>
+                {
+                    ASOverrideLookUpDTO response = await InsertASOverrideLookUp(asoverrideLookupDTO, submittedby);
+                    response.Action = "Submit for Approval";
+
+                    ASOverrideLookUpDTO response2 = await UpdateASOverrideLookUp(response, submittedby);
+                    response2.Action = "Approve";
+
+                    ASOverrideLookUpDTO response3 = await InsertASOverrideLookUpStatus(response2, submittedby);
+                });
+
+                tasks.Add(task);
+            });
+
+            await Task.WhenAll(tasks);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Handle exception, log, or throw if needed
+            return false;
+        }
+    }
+}
