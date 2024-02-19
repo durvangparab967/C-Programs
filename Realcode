@@ -1,0 +1,26 @@
+function Invoke-BitbucketApi {
+    param (
+        [string]$Endpoint,
+        [string]$Method = "GET",
+        [string]$Body = $null
+    )
+
+    $headers = @{
+        Authorization = "Bearer $apiKey"
+        "Content-Type" = "application/json"
+    }
+
+    $params = @{
+        Uri         = $Endpoint
+        Method      = $Method
+        Headers     = $headers
+        ContentType = "application/json"
+    }
+
+    if ($Body) {
+        $params.Body = $Body
+    }
+
+    $response = Invoke-RestMethod @params -ErrorAction Stop
+    return $response
+}
