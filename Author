@@ -1,0 +1,52 @@
+# Define your Bitbucket API key
+$apiKey = "your_api_key"
+
+# API endpoint for listing repositories
+$repositoriesEndpoint = "https://api.bitbucket.org/2.0/repositories"
+
+# Function to make HTTP requests
+function Invoke-BitbucketApi {
+    param (
+        [string]$Endpoint,
+        [string]$Method = "GET",
+        [string]$Body = $null
+    )
+
+    $headers = @{
+        Authorization = "Bearer $apiKey"
+        "Content-Type" = "application/json"
+    }
+
+    $response = Invoke-RestMethod -Uri $Endpoint -Method $Method -Headers $headers -Body $Body -ErrorAction Stop
+    return $response
+}
+
+# Get a list of all repositories
+$repositories = Invoke-BitbucketApi -Endpoint $repositoriesEndpoint
+
+# Loop through each repository
+foreach ($repo in $repositories.values) {
+    $repoName = $repo.name
+    Write-Host "Processing repository: $repoName"
+
+    # Get the recent commits
+    $commitsEndpoint = "$repositoriesEndpoint/$repoName/commits"
+    $commits = Invoke-BitbucketApi -Endpoint $commitsEndpoint
+
+    # Assuming you want to tag the most recent commit
+    $latestCommit = $commits.values[0]
+    $latestCommitHash = $latestCommit.hash
+
+    # Tag the latest commit
+    $tagEndpoint = "$repositoriesEndpoint/$repoName/refs"
+    $tagBody = @{
+        name = "latest"
+        target = @{
+            hash = $latestCommitHash
+        }
+    } | ConvertTo-Json
+
+    Invoke-BitbucketApi -Endpoint $tagEndpoint -Method "POST" -Body $tagBody
+
+    Write-Host "Tagged latest commit for repository: $repoName"
+}
