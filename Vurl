@@ -1,0 +1,2 @@
+curl -X POST -H "Content-Type: application/json" -u <username>:<password_or_api_token> https://api.bitbucket.org/2.0/repositories/<workspace>/<repository>/refs/tags \
+-d '{"name": "tag_name", "target": {"hash": "commit_hash"}}'
