@@ -1,0 +1,51 @@
+# Define Bitbucket credentials and base URL
+$Username = "your_username"
+$Password = "your_password"
+$BaseURL = "https://api.bitbucket.org/2.0"
+
+# Function to get repositories
+function Get-Repos {
+    $ReposURL = "$BaseURL/repositories"
+    $ReposResponse = Invoke-RestMethod -Uri $ReposURL -Credential ($Username, $Password) -Method Get
+    return $ReposResponse.values
+}
+
+# Function to get latest commit hash for a repository
+function Get-LatestCommitHash {
+    param (
+        [string]$RepoFullName
+    )
+    $CommitsURL = "$BaseURL/repositories/$RepoFullName/commits"
+    $CommitsResponse = Invoke-RestMethod -Uri $CommitsURL -Credential ($Username, $Password) -Method Get
+    return $CommitsResponse.values[0].hash
+}
+
+# Function to create a tag for a repository
+function Create-Tag {
+    param (
+        [string]$RepoFullName,
+        [string]$Tag,
+        [string]$CommitHash
+    )
+    $TagURL = "$BaseURL/repositories/$RepoFullName/refs/tags/$Tag"
+    $Body = @{
+        name = $Tag
+        target = @{
+            hash = $CommitHash
+        }
+    }
+    $JsonBody = $Body | ConvertTo-Json
+    Invoke-RestMethod -Uri $TagURL -Credential ($Username, $Password) -Method Post -ContentType "application/json" -Body $JsonBody
+}
+
+# Get all repositories
+$Repos = Get-Repos
+
+# Tag all latest commits
+foreach ($Repo in $Repos) {
+    $RepoFullName = $Repo.full_name
+    $LatestCommitHash = Get-LatestCommitHash -RepoFullName $RepoFullName
+    $Tag = "latest"
+    Create-Tag -RepoFullName $RepoFullName -Tag $Tag -CommitHash $LatestCommitHash
+    Write-Host "Tagged latest commit in $RepoFullName with tag $Tag"
+}
