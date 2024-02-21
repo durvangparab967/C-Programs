@@ -1,0 +1,14 @@
+# Get the recent commits excluding merges
+$nonMergeCommits = $commits.values | Where-Object { $_.parents.count -eq 1 }
+
+# Assuming you want to tag the most recent non-merge commit
+$latestNonMergeCommit = $nonMergeCommits[0]
+$latestNonMergeCommitHash = $latestNonMergeCommit.hash
+
+# Tag the latest non-merge commit
+$tagBody = @{
+    name = "latest_non_merge"
+    target = @{
+        hash = $latestNonMergeCommitHash
+    }
+} | ConvertTo-Json
