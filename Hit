@@ -1,0 +1,14 @@
+# Replace 'branch_name' with the name of the branch you want to tag
+$branchName = "branch_name"
+
+# Replace 'tag_name' with the name you want for your tag
+$tagName = "tag_name"
+
+# Checkout the branch
+git checkout $branchName
+
+# Tag the latest commit
+git tag -a $tagName -m "Tagging the latest commit"
+
+# Push the tag to the remote repository
+git push origin $tagName
