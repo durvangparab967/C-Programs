@@ -1,0 +1,20 @@
+# Import the WebAdministration module if not already imported
+Import-Module WebAdministration
+
+# Get all website names
+$websites = Get-Website
+
+# Iterate over each website
+foreach ($website in $websites) {
+    $siteName = $website.Name
+    
+    # Get the bindings for the site
+    $bindings = Get-WebBinding -Name $siteName
+    
+    # Filter bindings with empty host headers and remove them
+    foreach ($binding in $bindings) {
+        if ($binding.HostHeader -eq "") {
+            Remove-WebBinding -Name $siteName -BindingInformation $binding.BindingInformation
+        }
+    }
+}
