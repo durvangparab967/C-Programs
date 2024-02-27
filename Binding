@@ -1,0 +1,16 @@
+# Import the WebAdministration module if not already imported
+Import-Module WebAdministration
+
+# Specify the site name
+$siteName = "YourSiteName"
+
+# Get the bindings for the site
+$bindings = Get-WebBinding -Name $siteName
+
+# Iterate over each binding and retrieve the host header
+foreach ($binding in $bindings) {
+    # Split the BindingInformation to extract the host header
+    $bindingInfo = $binding.BindingInformation -split ":"
+    $hostHeader = $bindingInfo[2]  # Assuming host header is at index 2
+    Write-Output "Host Header for $siteName: $hostHeader"
+}
