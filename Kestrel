@@ -1,0 +1,14 @@
+public static IHostBuilder CreateHostBuilder(string[] args) =>
+    Host.CreateDefaultBuilder(args)
+        .ConfigureWebHostDefaults(webBuilder =>
+        {
+            webBuilder.UseStartup<Startup>();
+            webBuilder.UseKestrel(options =>
+            {
+                // Configure Kestrel settings here
+                options.ListenAnyIP(5000); // Listen on port 5000 on all network interfaces
+                options.Limits.MaxRequestBodySize = 10 * 1024; // Set maximum request body size to 10 MB
+                options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2); // Set keep-alive timeout to 2 minutes
+                options.AddServerHeader = false; // Disable adding Server HTTP header
+            });
+        });
