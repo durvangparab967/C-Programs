@@ -1,0 +1,31 @@
+import requests
+from bs4 import BeautifulSoup
+
+# URL of the Confluence page
+url = 'YOUR_CONFLUENCE_PAGE_URL_HERE'
+
+# Fetch the HTML content of the page
+response = requests.get(url)
+html_content = response.text
+
+# Parse the HTML content
+soup = BeautifulSoup(html_content, 'html.parser')
+
+# Check if there are tables on the page
+tables = soup.find_all('table')
+
+if tables:
+    # Iterate through each table
+    for table in tables:
+        # Find all rows in the table
+        rows = table.find_all('tr')
+        for row in rows:
+            # Find all cells (columns) in the row
+            cells = row.find_all(['th', 'td'])
+            # Extract text from each cell and print
+            for cell in cells:
+                print(cell.get_text().strip())
+else:
+    # If no tables, read text normally
+    text_data = soup.get_text()
+    print(text_data)
