@@ -1,0 +1,39 @@
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers import TextDataset, DataCollatorForLanguageModeling
+from transformers import Trainer, TrainingArguments
+
+# Load pre-trained model and tokenizer
+model_name = "gpt2"  # Example: "gpt2-medium"
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+model = GPT2LMHeadModel.from_pretrained(model_name)
+
+# Load and preprocess your dataset
+train_dataset = TextDataset(
+    tokenizer=tokenizer,
+    file_path="path_to_your_training_data.txt",
+    block_size=128  # Adjust block size as needed
+)
+
+# Configure training arguments
+training_args = TrainingArguments(
+    output_dir="./output",
+    overwrite_output_dir=True,
+    num_train_epochs=3,
+    per_device_train_batch_size=8,
+    save_steps=10_000,
+    save_total_limit=2,
+)
+
+# Create Trainer instance
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False),
+    train_dataset=train_dataset,
+)
+
+# Fine-tune the model
+trainer.train()
+
+# Save the fine-tuned model
+trainer.save_model("path_to_save_model")
