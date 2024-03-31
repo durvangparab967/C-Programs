@@ -1,0 +1,37 @@
+from transformers import LlamaForMaskedLM, LlamaTokenizer
+from transformers import Trainer, TrainingArguments
+from torch.utils.data import Dataset, DataLoader
+import torch
+
+def prepare_confluence_dataset(data, tokenizer, max_length):
+    tokenized_data = tokenizer(data, max_length=max_length, truncation=True, padding="max_length")
+    return tokenized_data
+
+def train_llama2_model(model_name_or_path, confluence_data, output_dir, num_train_epochs=3, per_device_train_batch_size=8, save_steps=1000, logging_steps=500, save_total_limit=2):
+    model = LlamaForMaskedLM.from_pretrained(model_name_or_path)
+    tokenizer = LlamaTokenizer.from_pretrained(model_name_or_path)
+
+    max_length = 128
+    tokenized_data = prepare_confluence_dataset(confluence_data, tokenizer, max_length)
+
+    training_args = TrainingArguments(
+        output_dir=output_dir,
+        overwrite_output_dir=True,
+        num_train_epochs=num_train_epochs,
+        per_device_train_batch_size=per_device_train_batch_size,
+        save_steps=save_steps,
+        save_total_limit=save_total_limit,
+        logging_steps=logging_steps,
+    )
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=tokenized_data,
+    )
+
+    trainer.train()
+
+# Example usage:
+confluence_data = [...]  # Load your Confluence data here
+train_llama2_model(model_name_or_path="models/llama2", confluence_data=confluence_data, output_dir="./llama2_finetuned")
