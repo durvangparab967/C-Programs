@@ -1,0 +1,10 @@
+from transformers import GPT2Tokenizer
+
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+dataset_path = "your_dataset.txt"
+
+# Tokenize dataset
+with open(dataset_path, "r", encoding="utf-8") as file:
+    data = file.readlines()
+
+tokenized_data = tokenizer(data, return_tensors="pt", padding=True, truncation=True, max_length=512)
