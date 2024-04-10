@@ -1,0 +1,28 @@
+from tokenizers import ByteLevelBPETokenizer
+from tokenizers.processors import BertProcessing
+
+# Read and preprocess the dataset
+with open("your_dataset.txt", "r", encoding="utf-8") as file:
+    data = file.readlines()
+
+# Initialize a tokenizer
+tokenizer = ByteLevelBPETokenizer()
+
+# Customize training
+tokenizer.train(files="your_dataset.txt", vocab_size=30000, min_frequency=2, special_tokens=[
+    "<s>",
+    "<pad>",
+    "</s>",
+    "<unk>",
+    "<mask>",
+])
+
+# Save the tokenizer and files
+tokenizer.save_model("tokenizer_folder")
+
+# Load tokenizer
+from transformers import GPT2Tokenizer, GPT2LMHeadModel, Trainer, TrainingArguments
+tokenizer = GPT2Tokenizer.from_pretrained("tokenizer_folder")
+
+# Tokenize dataset
+tokenized_data = tokenizer(data, padding=True, truncation=True, max_length=512, return_tensors="pt")
