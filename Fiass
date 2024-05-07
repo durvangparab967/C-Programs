@@ -1,0 +1,39 @@
+import torch
+import faiss
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+import numpy as np
+
+# Load Confluence data
+confluence_data = [...]  # List of strings containing Confluence data
+
+# Fine-tune language model
+model = GPT2LMHeadModel.from_pretrained("gpt2")
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+
+# Tokenize and vectorize the Confluence data
+confluence_vectors = []
+for document in confluence_data:
+    inputs = tokenizer(document, return_tensors="pt", max_length=512, truncation=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+        embeddings = outputs.last_hidden_state.mean(dim=1).squeeze().detach().numpy()
+        confluence_vectors.append(embeddings)
+
+# Convert vectors to numpy array
+confluence_vectors = np.array(confluence_vectors)
+
+# Build Faiss index
+index = faiss.IndexFlatL2(confluence_vectors.shape[1])  # L2 distance
+index.add(confluence_vectors)
+
+# Query similar documents
+query = "How to install software?"
+query_vector = model.encode(query).squeeze().detach().numpy()
+k = 5  # Number of similar documents to retrieve
+distances, indices = index.search(query_vector.reshape(1, -1), k)
+
+# Print similar documents
+for i, idx in enumerate(indices[0]):
+    print(f"Similar document {i+1}:")
+    print(confluence_data[idx])
+    print()
