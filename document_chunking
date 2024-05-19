@@ -1,0 +1,77 @@
+import re
+from transformers import GPT2Tokenizer
+
+# Read data from document
+with open('document.txt', 'r') as file:
+    document_data = file.read()
+
+# Clean text data
+def clean_text(text):
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text
+
+cleaned_data = clean_text(document_data)
+
+
+///
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+max_length = 512  # Define max token length for chunks
+
+def chunk_text(text, max_length):
+    tokens = tokenizer.encode(text)
+    chunks = [tokens[i:i + max_length] for i in range(0, len(tokens), max_length)]
+    return [tokenizer.decode(chunk) for chunk in chunks]
+
+chunked_data = chunk_text(cleaned_data, max_length)
+
+//
+from chromadb.config import Settings
+from chromadb.utils import get_client
+from chromadb.dataset import MemoryDataset
+
+# Initialize Chroma DB client
+chroma_client = get_client(Settings())
+
+# Create a new dataset in Chroma DB
+dataset = MemoryDataset(chroma_client, name="document_data")
+
+# Add chunked data to the dataset
+for i, chunk in enumerate(chunked_data):
+    dataset.add_text(chunk, metadata={"chunk_id": i})
+
+# Persist the dataset
+dataset.save()
+
+////
+from flask import Flask, request, jsonify
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+import torch
+
+app = Flask(__name__)
+
+# Load fine-tuned GPT-2 model
+model = GPT2LMHeadModel.from_pretrained('gpt2')
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+
+# Initialize Chroma DB client and dataset
+chroma_client = get_client(Settings())
+dataset = MemoryDataset(chroma_client, name="document_data")
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    user_input = request.json['input']
+    
+    # Retrieve relevant chunks from Chroma DB
+    relevant_chunks = dataset.search(user_input, top_k=5)
+    context = " ".join([chunk["text"] for chunk in relevant_chunks])
+
+    # Generate response using GPT-2
+    inputs = tokenizer.encode(user_input + context, return_tensors='pt')
+    outputs = model.generate(inputs, max_length=150, num_return_sequences=1)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    return jsonify({'response': response})
+
+if __name__ == '__main__':
+    app.run(debug=True)
