@@ -1,0 +1,67 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        string jsonFilePath = "data.json";
+        string csvFilePath = "data.csv";
+
+        // Read JSON file
+        var jsonData = File.ReadAllText(jsonFilePath);
+        
+        // Parse JSON data
+        var jsonArray = JArray.Parse(jsonData);
+
+        // Convert JSON to CSV
+        var csvData = ConvertJsonToCsv(jsonArray);
+
+        // Write CSV data to file
+        File.WriteAllText(csvFilePath, csvData);
+
+        Console.WriteLine("CSV file has been created successfully.");
+    }
+
+    static string ConvertJsonToCsv(JArray jsonArray)
+    {
+        var csv = new StringWriter();
+        var headers = new List<string>();
+
+        // Write headers
+        foreach (JObject obj in jsonArray.Children<JObject>())
+        {
+            foreach (JProperty prop in obj.Properties())
+            {
+                if (!headers.Contains(prop.Name))
+                {
+                    headers.Add(prop.Name);
+                }
+            }
+        }
+        csv.WriteLine(string.Join(",", headers));
+
+        // Write data rows
+        foreach (JObject obj in jsonArray.Children<JObject>())
+        {
+            var row = new List<string>();
+            foreach (var header in headers)
+            {
+                if (obj.TryGetValue(header, out JToken value))
+                {
+                    row.Add(value.ToString().Replace(",", " ")); // Replacing commas in data to avoid CSV issues
+                }
+                else
+                {
+                    row.Add(string.Empty);
+                }
+            }
+            csv.WriteLine(string.Join(",", row));
+        }
+
+        return csv.ToString();
+    }
+}
