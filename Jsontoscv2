@@ -1,0 +1,100 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        string jsonFilePath = "data.json";
+        string csvFilePath = "data.csv";
+
+        // Read JSON file
+        var jsonData = File.ReadAllText(jsonFilePath);
+        
+        // Parse JSON data
+        var jsonArray = JArray.Parse(jsonData);
+
+        // Convert JSON to CSV
+        var csvData = ConvertJsonToCsv(jsonArray);
+
+        // Write CSV data to file
+        File.WriteAllText(csvFilePath, csvData);
+
+        Console.WriteLine("CSV file has been created successfully.");
+    }
+
+    static string ConvertJsonToCsv(JArray jsonArray)
+    {
+        var csv = new StringWriter();
+        var headers = new HashSet<string>();
+
+        // Flatten JSON and collect headers
+        var flatDataList = new List<Dictionary<string, string>>();
+        foreach (JObject obj in jsonArray.Children<JObject>())
+        {
+            var flatData = new Dictionary<string, string>();
+            FlattenJson(obj, flatData, "");
+            flatDataList.Add(flatData);
+            foreach (var key in flatData.Keys)
+            {
+                headers.Add(key);
+            }
+        }
+
+        // Write headers
+        csv.WriteLine(string.Join(",", headers));
+
+        // Write data rows
+        foreach (var flatData in flatDataList)
+        {
+            var row = new List<string>();
+            foreach (var header in headers)
+            {
+                if (flatData.TryGetValue(header, out string value))
+                {
+                    row.Add(value.Replace(",", " ")); // Replacing commas in data to avoid CSV issues
+                }
+                else
+                {
+                    row.Add(string.Empty);
+                }
+            }
+            csv.WriteLine(string.Join(",", row));
+        }
+
+        return csv.ToString();
+    }
+
+    static void FlattenJson(JObject jsonObj, Dictionary<string, string> flatData, string prefix)
+    {
+        foreach (var prop in jsonObj.Properties())
+        {
+            var key = string.IsNullOrEmpty(prefix) ? prop.Name : $"{prefix}.{prop.Name}";
+            if (prop.Value is JObject nestedObj)
+            {
+                FlattenJson(nestedObj, flatData, key);
+            }
+            else if (prop.Value is JArray nestedArray)
+            {
+                for (int i = 0; i < nestedArray.Count; i++)
+                {
+                    if (nestedArray[i] is JObject arrayObj)
+                    {
+                        FlattenJson(arrayObj, flatData, $"{key}[{i}]");
+                    }
+                    else
+                    {
+                        flatData[$"{key}[{i}]"] = nestedArray[i].ToString();
+                    }
+                }
+            }
+            else
+            {
+                flatData[key] = prop.Value.ToString();
+            }
+        }
+    }
+}
