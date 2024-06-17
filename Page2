@@ -1,0 +1,60 @@
+import React, { useState, useEffect } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+const GridComponent = () => {
+  const [rowData, setRowData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+
+  const pageSize = 10; // Number of rows per page
+
+  const fetchData = (page) => {
+    fetch(`https://your-dotnet-api-url/data?page=${page}&pageSize=${pageSize}`)
+      .then(response => response.json())
+      .then(data => {
+        setRowData(data.rows);
+        setTotalPages(data.totalPages);
+      });
+  };
+
+  useEffect(() => {
+    fetchData(currentPage);
+  }, [currentPage]);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  const columnDefs = [
+    { headerName: 'Column 1', field: 'col1' },
+    { headerName: 'Column 2', field: 'col2' },
+    // Add other columns as necessary
+  ];
+
+  return (
+    <div className="ag-theme-alpine" style={{ height: 400, width: '100%' }}>
+      <AgGridReact
+        columnDefs={columnDefs}
+        rowData={rowData}
+        pagination={true}
+        paginationPageSize={pageSize}
+        onPaginationChanged={(event) => {
+          if (event.api) {
+            handlePageChange(event.api.paginationGetCurrentPage() + 1);
+          }
+        }}
+      />
+      <div>
+        <button onClick={() => handlePageChange(1)}>First</button>
+        <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>Previous</button>
+        <span>Page {currentPage} of {totalPages}</span>
+        <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>Next</button>
+        <button onClick={() => handlePageChange(totalPages)}>Last</button>
+      </div>
+    </div>
+  );
+};
+
+export default GridComponent;
